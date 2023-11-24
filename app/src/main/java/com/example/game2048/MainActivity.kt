@@ -15,18 +15,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.game2048.ui.theme.Game2048Theme
 import com.example.game2048.ui.theme.GameBackground
 import com.example.game2048.viewmodel.GameViewModel
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var gameModel = viewModels<GameViewModel>()
@@ -35,6 +33,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             Game2048Theme {
+                var direction by remember { mutableStateOf(Direction.ZERO) }
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -48,41 +47,24 @@ class MainActivity : ComponentActivity() {
                             .pointerInput(Unit) {
                                 var swipeLogged = false
 
-                                detectDragGestures { change, dragAmount ->
-                                    change.consume()
+                               detectDragGestures(
+                                   onDrag = {
+                                       change, dragAmount ->
+                                       change.consume()
+                                       val (x,y) = dragAmount;
+                                       direction = handleDragEvent(x,y);
+                                   },
+                                   onDragEnd = {
+                                       gameModel.value.handleDirection(direction)
+                                       //TODO handle direction
+                                       Log.d(TAG, direction.toString());
+                                   }
 
-                                    if (!swipeLogged) {
-                                        val (x, y) = dragAmount
-                                        when {
-                                            x > 0 -> {
-                                                Log.d(TAG, "right")
-                                                swipeLogged = true
-                                            }
-                                            x < 0 -> {
-                                                Log.d(TAG, "left")
-                                                swipeLogged = true
-                                            }
-                                        }
-                                        when {
-                                            y > 0 -> {
-                                                Log.d(TAG, "down")
-                                                swipeLogged = true
-                                            }
-                                            y < 0 -> {
-                                                Log.d(TAG, "up")
-                                                swipeLogged = true
-                                            }
-                                        }
-                                    }
+                               )
 
                                     // Reset swipeLogged after a certain time period (for example, 1 second)
-                                    if (!swipeLogged) {
-                                        GlobalScope.launch {
-                                            delay(1000) // 1000 milliseconds (1 second)
-                                            swipeLogged = false
-                                        }
-                                    }
-                                }
+
+
                             }
                     )
                             {
@@ -90,7 +72,7 @@ class MainActivity : ComponentActivity() {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            gameModel.value.gameModel.value.grid.forEach{
+                            gameModel.value.grid.value.forEach{
                                     cellList ->
                                 run {
                                     Row {
@@ -109,5 +91,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun handleDragEvent(x: Float, y: Float): Direction {
+        when {
+            x > 0 ->{ return Direction.RIGHT}
+            x < 0 ->{ return Direction.LEFT}
+        }
+        when {
+            y > 0 -> {return Direction.DOWN}
+            y < 0 -> {return Direction.UP}
+        }
+        return Direction.ZERO
     }
 }
